@@ -1,0 +1,159 @@
+#include <iostream>
+#include <fstream>
+#include <ctime>
+#include <cstdio>
+
+using namespace std;
+
+#define TABLES 6
+#define EXPIRE_SECONDS 7200   // 2 hours = 7200 seconds
+
+// Convert date + time to time_t
+time_t convertToTime(int day, int month, int year, int hour, int minute) {
+    struct tm t = {};
+    t.tm_mday = day;
+    t.tm_mon = month - 1;
+    t.tm_year = year - 1900;
+    t.tm_hour = hour;
+    t.tm_min = minute;
+    t.tm_sec = 0;
+    return mktime(&t);
+}
+
+// Check expiration
+bool isExpired(time_t reservedTime) {
+    time_t now = time(0);
+    double seconds = difftime(now, reservedTime);
+    return seconds >= EXPIRE_SECONDS;
+}
+
+// Show reservations
+void showReservations() {
+    for (int i = 1; i <= TABLES; i++) {
+        string filename = "table" + to_string(i) + ".txt";
+        ifstream file(filename);
+
+        cout << "Table " << i << ":" << endl;
+
+        if (!file) {
+            cout << "  No reservations.\n\n";
+            continue;
+        }
+
+        string name, phone;
+        int day, month, year, hour, minute;
+
+        file >> name >> phone >> day >> month >> year >> hour >> minute;
+
+        if (file.fail()) {
+            cout << "  No reservations.\n\n";
+            continue;
+        }
+
+        time_t reservedTime = convertToTime(day, month, year, hour, minute);
+
+        if (isExpired(reservedTime)) {
+            file.close();
+            remove(filename.c_str());
+            cout << "  Reservation expired.\n\n";
+        } else {
+            cout << "  " << name << " | "
+                 << phone << " | "
+                 << day << "/" << month << "/" << year
+                 << " | " << hour << ":" << minute << "\n\n";
+        }
+
+        file.close();
+    }
+}
+
+// Add reservation
+void addReservation() {
+    int table;
+    cout << "Choose table (1-6): ";
+    cin >> table;
+
+    if (table < 1 || table > 6) {
+        cout << "Invalid table number.\n";
+        return;
+    }
+
+    string filename = "table" + to_string(table) + ".txt";
+    ifstream checkFile(filename);
+
+    if (checkFile) {
+        cout << "Table already reserved.\n";
+        checkFile.close();
+        return;
+    }
+
+    checkFile.close();
+
+    string name, phone;
+    int day, month, year, hour, minute;
+
+    cout << "Enter name: ";
+    cin >> name;
+
+    cout << "Enter phone: ";
+    cin >> phone;
+
+    cout << "Enter day month year: ";
+    cin >> day >> month >> year;
+
+    cout << "Enter hour minute: ";
+    cin >> hour >> minute;
+
+    ofstream file(filename);
+    file << name << " " << phone << " "
+         << day << " " << month << " " << year << " "
+         << hour << " " << minute;
+
+    file.close();
+
+    cout << "Reservation added successfully!\n";
+}
+
+// ✅ Reset system (delete all files)
+void resetSystem() {
+    for (int i = 1; i <= TABLES; i++) {
+        string filename = "table" + to_string(i) + ".txt";
+        remove(filename.c_str());
+    }
+
+    cout << "All reservations have been deleted.\n";
+}
+
+int main() {
+    int choice;
+
+    do {
+        cout << "\n===== BUFFET RESERVATION SYSTEM =====\n";
+        cout << "1. Show Reservations\n";
+        cout << "2. Add Reservation\n";
+        cout << "3. Reset System\n";
+        cout << "4. Exit\n";
+        cout << "Choose: ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1:
+                showReservations();
+                break;
+            case 2:
+                addReservation();
+                break;
+            case 3:
+                resetSystem();
+                break;
+            case 4:
+                cout << "Goodbye!\n";
+                break;
+            default:
+                cout << "Invalid choice.\n";
+        }
+
+    } while (choice != 4);
+
+    return 0;
+}
